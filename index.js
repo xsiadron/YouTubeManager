@@ -6,78 +6,110 @@
 
     async function loadSliderWidth() {
         return new Promise((resolve) => {
-            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-                chrome.storage.local.get([STORAGE_KEY], (result) => {
-                    let saved = result[STORAGE_KEY];
-                    if (saved !== undefined && !isNaN(saved)) {
+            try {
+                if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                    chrome.storage.local.get([STORAGE_KEY], (result) => {
+                        if (chrome.runtime && chrome.runtime.lastError) {
+                            resolve(100);
+                            return;
+                        }
+                        let saved = result[STORAGE_KEY];
+                        if (saved !== undefined && !isNaN(saved)) {
+                            saved = parseInt(saved, 10);
+                        } else {
+                            saved = 100;
+                        }
+                        resolve((!isNaN(saved) && saved >= 0 && saved <= 100) ? saved : 100);
+                    });
+                } else {
+                    let saved = localStorage.getItem(STORAGE_KEY);
+                    if (saved !== null && !isNaN(saved)) {
                         saved = parseInt(saved, 10);
                     } else {
                         saved = 100;
                     }
                     resolve((!isNaN(saved) && saved >= 0 && saved <= 100) ? saved : 100);
-                });
-            } else {
-                let saved = localStorage.getItem(STORAGE_KEY);
-                if (saved !== null && !isNaN(saved)) {
-                    saved = parseInt(saved, 10);
-                } else {
-                    saved = 100;
                 }
-                resolve((!isNaN(saved) && saved >= 0 && saved <= 100) ? saved : 100);
+            } catch (e) {
+                resolve(100);
             }
         });
     }
 
     async function loadSliderMinWidth() {
         return new Promise((resolve) => {
-            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-                chrome.storage.local.get([MIN_WIDTH_KEY], (result) => {
-                    let saved = result[MIN_WIDTH_KEY];
-                    if (saved !== undefined && !isNaN(saved)) {
+            try {
+                if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                    chrome.storage.local.get([MIN_WIDTH_KEY], (result) => {
+                        if (chrome.runtime && chrome.runtime.lastError) {
+                            resolve(150);
+                            return;
+                        }
+                        let saved = result[MIN_WIDTH_KEY];
+                        if (saved !== undefined && !isNaN(saved)) {
+                            saved = parseInt(saved, 10);
+                        } else {
+                            saved = 150;
+                        }
+                        resolve((!isNaN(saved) && saved >= 150 && saved <= 500) ? saved : 150);
+                    });
+                } else {
+                    let saved = localStorage.getItem(MIN_WIDTH_KEY);
+                    if (saved !== null && !isNaN(saved)) {
                         saved = parseInt(saved, 10);
                     } else {
                         saved = 150;
                     }
                     resolve((!isNaN(saved) && saved >= 150 && saved <= 500) ? saved : 150);
-                });
-            } else {
-                let saved = localStorage.getItem(MIN_WIDTH_KEY);
-                if (saved !== null && !isNaN(saved)) {
-                    saved = parseInt(saved, 10);
-                } else {
-                    saved = 150;
                 }
-                resolve((!isNaN(saved) && saved >= 150 && saved <= 500) ? saved : 150);
+            } catch (e) {
+                resolve(150);
             }
         });
     }
 
     async function loadSliderThumbStyle() {
         return new Promise((resolve) => {
-            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-                chrome.storage.local.get([SLIDER_STYLE_KEY], (result) => {
-                    resolve(result[SLIDER_STYLE_KEY] || 'circle');
-                });
-            } else {
+            try {
+                if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                    chrome.storage.local.get([SLIDER_STYLE_KEY], (result) => {
+                        if (chrome.runtime && chrome.runtime.lastError) {
+                            resolve('circle');
+                            return;
+                        }
+                        resolve(result[SLIDER_STYLE_KEY] || 'circle');
+                    });
+                } else {
+                    resolve('circle');
+                }
+            } catch (e) {
                 resolve('circle');
             }
         });
     }
 
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
-        chrome.runtime.onMessage.addListener((request) => {
-            if (request.action === 'updateSliderWidth' && typeof request.widthPercent === 'number') {
-                const area = document.querySelector('.ytp-volume-area');
-                if (area) area.style.width = `calc(${request.widthPercent}%)`;
-            }
-            if (request.action === 'updateSliderMinWidth' && typeof request.minWidthPx === 'number') {
-                const area = document.querySelector('.ytp-volume-area');
-                if (area) area.style.minWidth = request.minWidthPx + 'px';
-            }
-            if (request.action === 'updateSliderThumbStyle' && typeof request.sliderStyle === 'string') {
-                updateCustomSliderThumbStyle(request.sliderStyle);
-            }
-        });
+        try {
+            chrome.runtime.onMessage.addListener((request) => {
+                try {
+                    if (request.action === 'updateSliderWidth' && typeof request.widthPercent === 'number') {
+                        const area = document.querySelector('.ytp-volume-area');
+                        if (area) area.style.width = `calc(${request.widthPercent}%)`;
+                    }
+                    if (request.action === 'updateSliderMinWidth' && typeof request.minWidthPx === 'number') {
+                        const area = document.querySelector('.ytp-volume-area');
+                        if (area) area.style.minWidth = request.minWidthPx + 'px';
+                    }
+                    if (request.action === 'updateSliderThumbStyle' && typeof request.sliderStyle === 'string') {
+                        updateCustomSliderThumbStyle(request.sliderStyle);
+                    }
+                } catch (e) {
+                    console.warn('onMessage handler error:', e);
+                }
+            });
+        } catch (e) {
+            console.warn('chrome.runtime.onMessage.addListener error:', e);
+        }
     }
 
     function updateCustomSliderThumbStyle(style) {
