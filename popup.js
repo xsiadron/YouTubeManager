@@ -148,5 +148,5 @@ function parseSliderValue(val) {
 
 function parseMinWidthValue(val) {
     const num = parseInt(val, 10);
-    return (!isNaN(num) && num >= 150 && num <= 500) ? num : 150;
+    return (!isNaN(num) && num >= 200 && num <= 500) ? num : 200;
 }
