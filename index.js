@@ -2,6 +2,7 @@
     const STEP = 0.01;
     const STORAGE_KEY = 'yt-manager-slider-width';
     const MIN_WIDTH_KEY = 'yt-manager-slider-min-width';
+    const SLIDER_STYLE_KEY = 'yt-manager-slider-style';
 
     async function loadSliderWidth() {
         return new Promise((resolve) => {
@@ -37,7 +38,7 @@
                     } else {
                         saved = 150;
                     }
-                    resolve((!isNaN(saved) && saved >= 50 && saved <= 500) ? saved : 150);
+                    resolve((!isNaN(saved) && saved >= 150 && saved <= 500) ? saved : 150);
                 });
             } else {
                 let saved = localStorage.getItem(MIN_WIDTH_KEY);
@@ -46,7 +47,19 @@
                 } else {
                     saved = 150;
                 }
-                resolve((!isNaN(saved) && saved >= 50 && saved <= 500) ? saved : 150);
+                resolve((!isNaN(saved) && saved >= 150 && saved <= 500) ? saved : 150);
+            }
+        });
+    }
+
+    async function loadSliderThumbStyle() {
+        return new Promise((resolve) => {
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                chrome.storage.local.get([SLIDER_STYLE_KEY], (result) => {
+                    resolve(result[SLIDER_STYLE_KEY] || 'circle');
+                });
+            } else {
+                resolve('circle');
             }
         });
     }
@@ -61,7 +74,18 @@
                 const area = document.querySelector('.ytp-volume-area');
                 if (area) area.style.minWidth = request.minWidthPx + 'px';
             }
+            if (request.action === 'updateSliderThumbStyle' && typeof request.sliderStyle === 'string') {
+                updateCustomSliderThumbStyle(request.sliderStyle);
+            }
         });
+    }
+
+    function updateCustomSliderThumbStyle(style) {
+        const slider = document.querySelector('#custom-volume-slider');
+        if (!slider) return;
+        slider.classList.remove('slider-thumb-circle', 'slider-thumb-line', 'slider-thumb-default');
+        if (style === 'circle') slider.classList.add('slider-thumb-circle');
+        else if (style === 'line') slider.classList.add('slider-thumb-line');
     }
 
     function isVolumeBarActive() {
@@ -185,6 +209,10 @@
         slider.step = 0.01;
         slider.style.width = '100%';
         slider.style.marginRight = '6px';
+        const style = await loadSliderThumbStyle();
+        slider.classList.remove('slider-thumb-circle', 'slider-thumb-line', 'slider-thumb-default');
+        if (style === 'circle') slider.classList.add('slider-thumb-circle');
+        else if (style === 'line') slider.classList.add('slider-thumb-line');
         const label = document.createElement('div');
         label.id = 'custom-volume-label';
         label.style.color = 'white';
