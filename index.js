@@ -362,6 +362,9 @@
                 height: 22px !important;
             }
             #custom-volume-slider { --custom-slider-val: 100%; }
+            .ytp-chapter-container {
+                max-width: fit-content !important;
+            }
         `;
         document.head.appendChild(style);
     }
