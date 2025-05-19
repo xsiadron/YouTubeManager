@@ -4,7 +4,7 @@ body {
     color: #fff;
     margin: 0;
     padding: 0 0 0 0;
-    min-width: 320px;
+    min-width: 350px;
     min-height: 120px;
     box-sizing: border-box;
 }
@@ -116,6 +116,19 @@ body {
 }
 #width-slider::-ms-fill-upper {
     background: #333333 !important;
+}
+#min-width-input {
+    background: #232323;
+    color: #fff;
+    border: 1px solid #333;
+    border-radius: 5px;
+    padding: 3px 8px;
+    font-size: 14px;
+    outline: none;
+    transition: border 0.2s;
+}
+#min-width-input:focus {
+    border: 1.5px solid #4fa3ff;
 }
 .footer-note {
     font-size: 12px;

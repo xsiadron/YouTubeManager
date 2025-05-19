@@ -1,6 +1,7 @@
 (function () {
     const STEP = 0.01;
     const STORAGE_KEY = 'yt-manager-slider-width';
+    const MIN_WIDTH_KEY = 'yt-manager-slider-min-width';
 
     async function loadSliderWidth() {
         return new Promise((resolve) => {
@@ -26,11 +27,39 @@
         });
     }
 
+    async function loadSliderMinWidth() {
+        return new Promise((resolve) => {
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                chrome.storage.local.get([MIN_WIDTH_KEY], (result) => {
+                    let saved = result[MIN_WIDTH_KEY];
+                    if (saved !== undefined && !isNaN(saved)) {
+                        saved = parseInt(saved, 10);
+                    } else {
+                        saved = 150;
+                    }
+                    resolve((!isNaN(saved) && saved >= 50 && saved <= 500) ? saved : 150);
+                });
+            } else {
+                let saved = localStorage.getItem(MIN_WIDTH_KEY);
+                if (saved !== null && !isNaN(saved)) {
+                    saved = parseInt(saved, 10);
+                } else {
+                    saved = 150;
+                }
+                resolve((!isNaN(saved) && saved >= 50 && saved <= 500) ? saved : 150);
+            }
+        });
+    }
+
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
         chrome.runtime.onMessage.addListener((request) => {
             if (request.action === 'updateSliderWidth' && typeof request.widthPercent === 'number') {
                 const area = document.querySelector('.ytp-volume-area');
-                if (area) area.style.width = `calc(${request.widthPercent}% + 100px)`;
+                if (area) area.style.width = `calc(${request.widthPercent}%)`;
+            }
+            if (request.action === 'updateSliderMinWidth' && typeof request.minWidthPx === 'number') {
+                const area = document.querySelector('.ytp-volume-area');
+                if (area) area.style.minWidth = request.minWidthPx + 'px';
             }
         });
     }
@@ -139,8 +168,9 @@
         const area = document.querySelector('.ytp-volume-area');
         if (!area) return;
         const widthPercent = await loadSliderWidth();
-        area.style.width = `calc(${widthPercent}% + 100px)`;
-        area.style.minWidth = '150px';
+        const minWidthPx = await loadSliderMinWidth();
+        area.style.width = `calc(${widthPercent}%)`;
+        area.style.minWidth = minWidthPx + 'px';
         const wrapper = document.createElement('div');
         wrapper.id = 'custom-volume-wrapper';
         wrapper.style.display = 'flex';
