@@ -195,7 +195,6 @@
         const video = document.querySelector('video');
         if (!video) return;
         video.volume = volume;
-        video.dispatchEvent(new Event('volumechange'));
         updateCustomSlider();
     }
 
@@ -234,6 +233,9 @@
         wrapper.style.alignItems = 'center';
         wrapper.style.width = '100%';
         wrapper.style.minWidth = '100px';
+        wrapper.style.padding = '6px 0';
+        wrapper.style.cursor = 'pointer';
+        wrapper.style.position = 'relative';
         const slider = document.createElement('input');
         slider.type = 'range';
         slider.id = 'custom-volume-slider';
@@ -255,6 +257,61 @@
         wrapper.appendChild(slider);
         wrapper.appendChild(label);
         area.appendChild(wrapper);
+
+        let isDragging = false;
+
+        const handleVolumeChange = (e) => {
+            const sliderRect = slider.getBoundingClientRect();
+            const clickX = e.clientX - sliderRect.left;
+            const sliderWidth = sliderRect.width;
+            const newValue = Math.max(0, Math.min(1, clickX / sliderWidth));
+
+            slider.value = newValue;
+            setCustomSliderCSS(newValue);
+
+            const video = document.querySelector('video');
+            if (video) {
+                video.volume = newValue;
+            }
+
+            const label = document.querySelector('#custom-volume-label');
+            if (label) {
+                label.textContent = Math.round(newValue * 100) + '%';
+            }
+        };
+
+        wrapper.addEventListener('mousedown', (e) => {
+            if (e.target === wrapper || e.target === label) {
+                isDragging = true;
+                handleVolumeChange(e);
+                e.preventDefault();
+            }
+        });
+
+        wrapper.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                handleVolumeChange(e);
+                e.preventDefault();
+            }
+        });
+
+        wrapper.addEventListener('mouseup', (e) => {
+            if (isDragging) {
+                isDragging = false;
+                const vol = parseFloat(slider.value);
+                saveVolume(vol);
+                saveVolumeStored(vol);
+            }
+        });
+
+        wrapper.addEventListener('mouseleave', (e) => {
+            if (isDragging) {
+                isDragging = false;
+                const vol = parseFloat(slider.value);
+                saveVolume(vol);
+                saveVolumeStored(vol);
+            }
+        });
         const muteBtn = document.querySelector('.ytp-mute-button');
         if (muteBtn) {
             muteBtn.addEventListener('click', () => {
@@ -301,11 +358,14 @@
                 min-width: 100px;
                 transition: width 0.2s ease;
                 --custom-slider-val: 100%;
+                vertical-align: middle;
             }
             #custom-volume-slider:focus { outline: none; }
             #custom-volume-slider::-webkit-slider-runnable-track {
                 background: linear-gradient(to right, #ffffff 0%, #ffffff var(--custom-slider-val, 50%), #333333 var(--custom-slider-val, 50%), #333333 100%) !important;
                 height: 4px;
+                border-radius: 2px;
+                position: relative;
             }
             #custom-volume-slider::-webkit-slider-thumb {
                 -webkit-appearance: none !important;
@@ -313,14 +373,14 @@
             }
             #custom-volume-slider.slider-thumb-circle::-webkit-slider-thumb {
                 border-radius: 50% !important;
-                margin-top: -5px !important;
+                margin-top: -6px !important;
                 border: none !important;
                 width: 16px !important;
                 height: 16px !important;
             }
             #custom-volume-slider.slider-thumb-line::-webkit-slider-thumb {
                 border-radius: 2px !important;
-                margin-top: -7px !important;
+                margin-top: -9px !important;
                 border: none !important;
                 width: 4px !important;
                 height: 22px !important;
