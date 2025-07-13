@@ -381,6 +381,9 @@
         const style = document.createElement('style');
         style.id = 'custom-volume-hide-style';
         style.textContent = `
+            .ytp-time-display.notranslate {
+                margin-left: 40px;
+            }
             .ytp-volume-panel, .ytp-volume-slider, .ytp-volume-slider-handle { display: none !important; }
             .ytp-mute-button { min-width: 48px !important; }
             #custom-volume-slider {
