@@ -179,39 +179,71 @@
             changeVolume(e.key === 'ArrowRight' ? STEP : -STEP);
         }
     }
-    window.addEventListener('keydown', onKeyDownCapture, { capture: true });
     document.addEventListener('keydown', onKeyDownCapture, { capture: true });
 
+    let cachedElements = {
+        slider: null,
+        video: null,
+        label: null,
+        lastUpdate: 0
+    };
+
+    function getCachedElement(selector, cacheKey) {
+        const now = Date.now();
+        if (!cachedElements[cacheKey] || now - cachedElements.lastUpdate > 5000) {
+            cachedElements[cacheKey] = document.querySelector(selector);
+            cachedElements.lastUpdate = now;
+        }
+        return cachedElements[cacheKey];
+    }
+
+    function clearElementCache() {
+        cachedElements = {
+            slider: null,
+            video: null,
+            label: null,
+            lastUpdate: 0
+        };
+    }
+
+    let saveVolumeTimeout = null;
+    function saveVolumeThrottled(volume) {
+        if (saveVolumeTimeout) clearTimeout(saveVolumeTimeout);
+        saveVolumeTimeout = setTimeout(() => {
+            saveVolume(volume);
+            saveVolumeStored(volume);
+        }, 100);
+    }
+
     function changeVolume(delta) {
-        const video = document.querySelector('video');
+        const video = getCachedElement('video', 'video');
         if (!video) return;
         const newVol = Math.min(1, Math.max(0, +(video.volume + delta).toFixed(2)));
-        saveVolume(newVol);
-        saveVolumeStored(newVol);
+        saveVolumeThrottled(newVol);
         applyVolume(newVol);
     }
 
     function applyVolume(volume) {
-        const video = document.querySelector('video');
+        const video = getCachedElement('video', 'video');
         if (!video) return;
         video.volume = volume;
         updateCustomSlider();
     }
 
     function setCustomSliderCSS(val) {
-        const slider = document.querySelector('#custom-volume-slider');
+        const slider = getCachedElement('#custom-volume-slider', 'slider');
         if (slider) {
             slider.style.setProperty('--custom-slider-val', `${val * 100}%`);
         }
     }
 
     function updateCustomSlider() {
-        const slider = document.querySelector('#custom-volume-slider');
-        const video = document.querySelector('video');
+        const slider = getCachedElement('#custom-volume-slider', 'slider');
+        const video = getCachedElement('video', 'video');
         if (slider && video) {
             slider.value = video.volume;
             setCustomSliderCSS(video.volume);
-            const label = document.querySelector('#custom-volume-label');
+            const label = getCachedElement('#custom-volume-label', 'label');
             if (label) {
                 label.textContent = Math.round(video.volume * 100) + '%';
             }
@@ -270,12 +302,12 @@
             slider.value = newValue;
             setCustomSliderCSS(newValue);
 
-            const video = document.querySelector('video');
+            const video = getCachedElement('video', 'video');
             if (video) {
                 video.volume = newValue;
             }
 
-            const label = document.querySelector('#custom-volume-label');
+            const label = getCachedElement('#custom-volume-label', 'label');
             if (label) {
                 label.textContent = Math.round(newValue * 100) + '%';
             }
@@ -304,8 +336,7 @@
                 isDragging = false;
                 wrapper.isDragging = false;
                 const vol = parseFloat(slider.value);
-                saveVolume(vol);
-                saveVolumeStored(vol);
+                saveVolumeThrottled(vol);
             }
         });
 
@@ -314,8 +345,7 @@
                 isDragging = false;
                 wrapper.isDragging = false;
                 const vol = parseFloat(slider.value);
-                saveVolume(vol);
-                saveVolumeStored(vol);
+                saveVolumeThrottled(vol);
             }
         });
         const muteBtn = document.querySelector('.ytp-mute-button');
@@ -337,8 +367,7 @@
             slider.addEventListener('input', () => {
                 const vol = parseFloat(slider.value);
                 setCustomSliderCSS(vol);
-                saveVolume(vol);
-                saveVolumeStored(vol);
+                saveVolumeThrottled(vol);
                 applyVolume(vol);
             });
             const val = (slider.value - slider.min) / (slider.max - slider.min);
@@ -447,26 +476,59 @@
         }
     }
 
+    let volumeCheckInterval = null;
+
+    function startVolumeMonitoring() {
+        if (volumeCheckInterval) return;
+
+        volumeCheckInterval = setInterval(() => {
+            if (document.hidden) return;
+
+            const video = getCachedElement('video', 'video');
+            if (!video) {
+                clearElementCache();
+                return;
+            }
+
+            forceVolumeFromSaved();
+        }, 30000);
+    }
+
+    function stopVolumeMonitoring() {
+        if (volumeCheckInterval) {
+            clearInterval(volumeCheckInterval);
+            volumeCheckInterval = null;
+        }
+    }
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            stopVolumeMonitoring();
+        } else {
+            startVolumeMonitoring();
+        }
+    });
+
     function forceVolumeFromSaved() {
         const stored = loadVolumeStored();
         if (stored !== null) {
-            const video = document.querySelector('video');
+            const video = getCachedElement('video', 'video');
             if (video) {
                 video.volume = stored;
                 video.dispatchEvent(new Event('volumechange'));
             }
-            const slider = document.querySelector('#custom-volume-slider');
+            const slider = getCachedElement('#custom-volume-slider', 'slider');
             if (slider) slider.value = stored;
-            const label = document.querySelector('#custom-volume-label');
+            const label = getCachedElement('#custom-volume-label', 'label');
             if (label) label.textContent = Math.round(stored * 100) + '%';
             const range = document.querySelector('.ytp-volume-slider input[type="range"]');
             if (range) range.value = stored;
         }
     }
-    setInterval(forceVolumeFromSaved, 60000);
+    startVolumeMonitoring();
 
     function enforceSavedVolumeOnChange() {
-        const video = document.querySelector('video');
+        const video = getCachedElement('video', 'video');
         if (video) {
             video.addEventListener('volumechange', () => {
                 const wrapper = document.querySelector('#custom-volume-wrapper');
@@ -477,9 +539,9 @@
                 const stored = loadVolumeStored();
                 if (stored !== null && Math.abs(video.volume - stored) > 0.01) {
                     video.volume = stored;
-                    const slider = document.querySelector('#custom-volume-slider');
+                    const slider = getCachedElement('#custom-volume-slider', 'slider');
                     if (slider) slider.value = stored;
-                    const label = document.querySelector('#custom-volume-label');
+                    const label = getCachedElement('#custom-volume-label', 'label');
                     if (label) label.textContent = Math.round(stored * 100) + '%';
                     const range = document.querySelector('.ytp-volume-slider input[type="range"]');
                     if (range) range.value = stored;
@@ -489,10 +551,13 @@
     }
 
     async function init() {
+        clearElementCache();
+
         hideDefaultVolumeUI();
         await injectCustomVolumeSlider();
         fixMouseVolumeDrag();
         enforceSavedVolumeOnChange();
+
         const saved = loadVolume();
         if (saved !== null) {
             const player = document.querySelector('#movie_player');
@@ -503,6 +568,11 @@
         }
     }
 
-    window.addEventListener('yt-navigate-finish', () => setTimeout(init, 500));
+    let initTimeout = null;
+    window.addEventListener('yt-navigate-finish', () => {
+        if (initTimeout) clearTimeout(initTimeout);
+        initTimeout = setTimeout(init, 300);
+    });
+
     init();
 })();
