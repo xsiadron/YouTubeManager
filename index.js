@@ -266,6 +266,7 @@
             const sliderWidth = sliderRect.width;
             const newValue = Math.max(0, Math.min(1, clickX / sliderWidth));
 
+            wrapper.isCustomChange = true;
             slider.value = newValue;
             setCustomSliderCSS(newValue);
 
@@ -278,11 +279,14 @@
             if (label) {
                 label.textContent = Math.round(newValue * 100) + '%';
             }
+
+            setTimeout(() => { wrapper.isCustomChange = false; }, 10);
         };
 
         wrapper.addEventListener('mousedown', (e) => {
             if (e.target === wrapper || e.target === label) {
                 isDragging = true;
+                wrapper.isDragging = true;
                 handleVolumeChange(e);
                 e.preventDefault();
             }
@@ -298,6 +302,7 @@
         wrapper.addEventListener('mouseup', (e) => {
             if (isDragging) {
                 isDragging = false;
+                wrapper.isDragging = false;
                 const vol = parseFloat(slider.value);
                 saveVolume(vol);
                 saveVolumeStored(vol);
@@ -307,6 +312,7 @@
         wrapper.addEventListener('mouseleave', (e) => {
             if (isDragging) {
                 isDragging = false;
+                wrapper.isDragging = false;
                 const vol = parseFloat(slider.value);
                 saveVolume(vol);
                 saveVolumeStored(vol);
@@ -463,6 +469,11 @@
         const video = document.querySelector('video');
         if (video) {
             video.addEventListener('volumechange', () => {
+                const wrapper = document.querySelector('#custom-volume-wrapper');
+                if (wrapper && (wrapper.isCustomChange || wrapper.isDragging)) {
+                    return;
+                }
+
                 const stored = loadVolumeStored();
                 if (stored !== null && Math.abs(video.volume - stored) > 0.01) {
                     video.volume = stored;
