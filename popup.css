@@ -77,6 +77,12 @@ body {
     min-width: 100px;
     transition: width 0.2s ease;
     --custom-slider-val: 100%;
+    position: relative;
+    z-index: 1;
+    padding-top: 14px;
+    padding-bottom: 14px;
+    box-sizing: content-box;
+    background: none;
 }
 #width-slider:focus {
     outline: none;

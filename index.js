@@ -322,10 +322,10 @@
             }
             #custom-volume-slider.slider-thumb-circle::-webkit-slider-thumb {
                 border-radius: 50% !important;
-                margin-top: -5px !important;
                 border: none !important;
                 width: 16px !important;
                 height: 16px !important;
+                transform: translateY(-5px) !important;
             }
             #custom-volume-slider.slider-thumb-line::-webkit-slider-thumb {
                 border-radius: 2px !important;
@@ -334,6 +334,7 @@
                 width: 4px !important;
                 height: 22px !important;
                 box-shadow: none !important;
+                transform: translateY(-1px) !important;
             }
             #custom-volume-slider::-moz-range-track {
                 background: linear-gradient(to right, #ffffff 0%, #ffffff var(--custom-slider-val, 50%), #333333 var(--custom-slider-val, 50%), #333333 100%) !important;
