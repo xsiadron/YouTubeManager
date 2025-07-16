@@ -179,71 +179,40 @@
             changeVolume(e.key === 'ArrowRight' ? STEP : -STEP);
         }
     }
+    window.addEventListener('keydown', onKeyDownCapture, { capture: true });
     document.addEventListener('keydown', onKeyDownCapture, { capture: true });
 
-    let cachedElements = {
-        slider: null,
-        video: null,
-        label: null,
-        lastUpdate: 0
-    };
-
-    function getCachedElement(selector, cacheKey) {
-        const now = Date.now();
-        if (!cachedElements[cacheKey] || now - cachedElements.lastUpdate > 5000) {
-            cachedElements[cacheKey] = document.querySelector(selector);
-            cachedElements.lastUpdate = now;
-        }
-        return cachedElements[cacheKey];
-    }
-
-    function clearElementCache() {
-        cachedElements = {
-            slider: null,
-            video: null,
-            label: null,
-            lastUpdate: 0
-        };
-    }
-
-    let saveVolumeTimeout = null;
-    function saveVolumeThrottled(volume) {
-        if (saveVolumeTimeout) clearTimeout(saveVolumeTimeout);
-        saveVolumeTimeout = setTimeout(() => {
-            saveVolume(volume);
-            saveVolumeStored(volume);
-        }, 100);
-    }
-
     function changeVolume(delta) {
-        const video = getCachedElement('video', 'video');
+        const video = document.querySelector('video');
         if (!video) return;
         const newVol = Math.min(1, Math.max(0, +(video.volume + delta).toFixed(2)));
-        saveVolumeThrottled(newVol);
+        saveVolume(newVol);
+        saveVolumeStored(newVol);
         applyVolume(newVol);
     }
 
     function applyVolume(volume) {
-        const video = getCachedElement('video', 'video');
+        const video = document.querySelector('video');
         if (!video) return;
         video.volume = volume;
+        video.dispatchEvent(new Event('volumechange'));
         updateCustomSlider();
     }
 
     function setCustomSliderCSS(val) {
-        const slider = getCachedElement('#custom-volume-slider', 'slider');
+        const slider = document.querySelector('#custom-volume-slider');
         if (slider) {
             slider.style.setProperty('--custom-slider-val', `${val * 100}%`);
         }
     }
 
     function updateCustomSlider() {
-        const slider = getCachedElement('#custom-volume-slider', 'slider');
-        const video = getCachedElement('video', 'video');
+        const slider = document.querySelector('#custom-volume-slider');
+        const video = document.querySelector('video');
         if (slider && video) {
             slider.value = video.volume;
             setCustomSliderCSS(video.volume);
-            const label = getCachedElement('#custom-volume-label', 'label');
+            const label = document.querySelector('#custom-volume-label');
             if (label) {
                 label.textContent = Math.round(video.volume * 100) + '%';
             }
@@ -265,9 +234,6 @@
         wrapper.style.alignItems = 'center';
         wrapper.style.width = '100%';
         wrapper.style.minWidth = '100px';
-        wrapper.style.padding = '6px 0';
-        wrapper.style.cursor = 'pointer';
-        wrapper.style.position = 'relative';
         const slider = document.createElement('input');
         slider.type = 'range';
         slider.id = 'custom-volume-slider';
@@ -289,65 +255,6 @@
         wrapper.appendChild(slider);
         wrapper.appendChild(label);
         area.appendChild(wrapper);
-
-        let isDragging = false;
-
-        const handleVolumeChange = (e) => {
-            const sliderRect = slider.getBoundingClientRect();
-            const clickX = e.clientX - sliderRect.left;
-            const sliderWidth = sliderRect.width;
-            const newValue = Math.max(0, Math.min(1, clickX / sliderWidth));
-
-            wrapper.isCustomChange = true;
-            slider.value = newValue;
-            setCustomSliderCSS(newValue);
-
-            const video = getCachedElement('video', 'video');
-            if (video) {
-                video.volume = newValue;
-            }
-
-            const label = getCachedElement('#custom-volume-label', 'label');
-            if (label) {
-                label.textContent = Math.round(newValue * 100) + '%';
-            }
-
-            setTimeout(() => { wrapper.isCustomChange = false; }, 10);
-        };
-
-        wrapper.addEventListener('mousedown', (e) => {
-            if (e.target === wrapper || e.target === label) {
-                isDragging = true;
-                wrapper.isDragging = true;
-                handleVolumeChange(e);
-                e.preventDefault();
-            }
-        });
-
-        wrapper.addEventListener('mousemove', (e) => {
-            if (isDragging) {
-                handleVolumeChange(e);
-                e.preventDefault();
-            }
-        });
-
-        wrapper.addEventListener('mouseup', (e) => {
-            if (isDragging) {
-                isDragging = false;
-                wrapper.isDragging = false;
-                const vol = parseFloat(slider.value);
-                saveVolumeThrottled(vol);
-            }
-        });
-
-        wrapper.addEventListener('mouseleave', (e) => {
-            if (isDragging) {
-                isDragging = false;
-                wrapper.isDragging = false;
-                const vol = parseFloat(slider.value);
-                saveVolumeThrottled(vol);
-            }
-        });
         const muteBtn = document.querySelector('.ytp-mute-button');
         if (muteBtn) {
             muteBtn.addEventListener('click', () => {
@@ -367,7 +274,8 @@
             slider.addEventListener('input', () => {
                 const vol = parseFloat(slider.value);
                 setCustomSliderCSS(vol);
-                saveVolumeThrottled(vol);
+                saveVolume(vol);
+                saveVolumeStored(vol);
                 applyVolume(vol);
             });
             const val = (slider.value - slider.min) / (slider.max - slider.min);
@@ -381,8 +289,8 @@
         const style = document.createElement('style');
         style.id = 'custom-volume-hide-style';
         style.textContent = `
-            .ytp-time-display.notranslate {
-                margin-left: 40px;
+            .ytp-time-contents {
+                margin-left: 40px !important;
             }
             .ytp-volume-panel, .ytp-volume-slider, .ytp-volume-slider-handle { display: none !important; }
             .ytp-mute-button { min-width: 48px !important; }
@@ -396,14 +304,17 @@
                 min-width: 100px;
                 transition: width 0.2s ease;
                 --custom-slider-val: 100%;
-                vertical-align: middle;
+                position: relative;
+                z-index: 1;
+                padding-top: 14px;
+                padding-bottom: 14px;
+                box-sizing: content-box;
+                background: none !important;
             }
             #custom-volume-slider:focus { outline: none; }
             #custom-volume-slider::-webkit-slider-runnable-track {
                 background: linear-gradient(to right, #ffffff 0%, #ffffff var(--custom-slider-val, 50%), #333333 var(--custom-slider-val, 50%), #333333 100%) !important;
                 height: 4px;
-                border-radius: 2px;
-                position: relative;
             }
             #custom-volume-slider::-webkit-slider-thumb {
                 -webkit-appearance: none !important;
@@ -411,14 +322,14 @@
             }
             #custom-volume-slider.slider-thumb-circle::-webkit-slider-thumb {
                 border-radius: 50% !important;
-                margin-top: -6px !important;
+                margin-top: -5px !important;
                 border: none !important;
                 width: 16px !important;
                 height: 16px !important;
             }
             #custom-volume-slider.slider-thumb-line::-webkit-slider-thumb {
                 border-radius: 2px !important;
-                margin-top: -9px !important;
+                margin-top: -7px !important;
                 border: none !important;
                 width: 4px !important;
                 height: 22px !important;
@@ -479,72 +390,34 @@
         }
     }
 
-    let volumeCheckInterval = null;
-
-    function startVolumeMonitoring() {
-        if (volumeCheckInterval) return;
-
-        volumeCheckInterval = setInterval(() => {
-            if (document.hidden) return;
-
-            const video = getCachedElement('video', 'video');
-            if (!video) {
-                clearElementCache();
-                return;
-            }
-
-            forceVolumeFromSaved();
-        }, 30000);
-    }
-
-    function stopVolumeMonitoring() {
-        if (volumeCheckInterval) {
-            clearInterval(volumeCheckInterval);
-            volumeCheckInterval = null;
-        }
-    }
-
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-            stopVolumeMonitoring();
-        } else {
-            startVolumeMonitoring();
-        }
-    });
-
     function forceVolumeFromSaved() {
         const stored = loadVolumeStored();
         if (stored !== null) {
-            const video = getCachedElement('video', 'video');
+            const video = document.querySelector('video');
             if (video) {
                 video.volume = stored;
                 video.dispatchEvent(new Event('volumechange'));
             }
-            const slider = getCachedElement('#custom-volume-slider', 'slider');
+            const slider = document.querySelector('#custom-volume-slider');
             if (slider) slider.value = stored;
-            const label = getCachedElement('#custom-volume-label', 'label');
+            const label = document.querySelector('#custom-volume-label');
             if (label) label.textContent = Math.round(stored * 100) + '%';
             const range = document.querySelector('.ytp-volume-slider input[type="range"]');
             if (range) range.value = stored;
         }
     }
-    startVolumeMonitoring();
+    setInterval(forceVolumeFromSaved, 60000);
 
     function enforceSavedVolumeOnChange() {
-        const video = getCachedElement('video', 'video');
+        const video = document.querySelector('video');
         if (video) {
             video.addEventListener('volumechange', () => {
-                const wrapper = document.querySelector('#custom-volume-wrapper');
-                if (wrapper && (wrapper.isCustomChange || wrapper.isDragging)) {
-                    return;
-                }
-
                 const stored = loadVolumeStored();
                 if (stored !== null && Math.abs(video.volume - stored) > 0.01) {
                     video.volume = stored;
-                    const slider = getCachedElement('#custom-volume-slider', 'slider');
+                    const slider = document.querySelector('#custom-volume-slider');
                     if (slider) slider.value = stored;
-                    const label = getCachedElement('#custom-volume-label', 'label');
+                    const label = document.querySelector('#custom-volume-label');
                     if (label) label.textContent = Math.round(stored * 100) + '%';
                     const range = document.querySelector('.ytp-volume-slider input[type="range"]');
                     if (range) range.value = stored;
@@ -554,13 +427,10 @@
     }
 
     async function init() {
-        clearElementCache();
-
         hideDefaultVolumeUI();
         await injectCustomVolumeSlider();
         fixMouseVolumeDrag();
         enforceSavedVolumeOnChange();
-
         const saved = loadVolume();
         if (saved !== null) {
             const player = document.querySelector('#movie_player');
@@ -571,11 +441,6 @@
         }
     }
 
-    let initTimeout = null;
-    window.addEventListener('yt-navigate-finish', () => {
-        if (initTimeout) clearTimeout(initTimeout);
-        initTimeout = setTimeout(init, 300);
-    });
-
+    window.addEventListener('yt-navigate-finish', () => setTimeout(init, 500));
     init();
 })();
